@@ -80,12 +80,13 @@ async def handle_encode(filepath, message, msg):
             await msg.edit("Something went wrong while extracting the subtitles!")
             return
     new_file = await encode(filepath, message, msg)
-    if new_file:
+    if new_file and os.path.exists(new_file) and os.path.getsize(new_file) > 0:
         await msg.edit("<code>Video Encoded, getting metadata...</code>")
         link = await upload_worker(new_file, message, msg)
         await msg.edit('Video Encoded Successfully! Link: {}'.format(link))
     else:
-        await message.reply("<code>Something wents wrong while encoding your file.</code>")
+        await message.reply("<code>Encoding Failed! (Output file missing or empty)</code>")
+        link = None
     return link
 
 

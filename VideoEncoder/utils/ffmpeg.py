@@ -311,7 +311,7 @@ async def encode(filepath, message, msg):
     finish = '-threads 8'
 
     # Finally
-    command = ['ffmpeg', '-hide_banner', '-loglevel', 'quiet',
+    command = ['ffmpeg', '-hide_banner', '-loglevel', 'error',
                '-progress', progress, '-hwaccel', 'auto', '-y', '-i', filepath]
     command.extend((codec.split() + preset.split() + frame.split() + tunevideo.split() + aspect.split() + video_opts.split() + Crf.split() +
                    watermark.split() + metadata.split() + subtitles.split() + audio_opts.split() + channels.split() + finish.split()))
