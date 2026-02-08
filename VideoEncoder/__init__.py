@@ -14,5 +14,8 @@ app = Client(
     api_id=api_id,
     api_hash=api_hash,
     plugins={'root': os.path.join(__package__, 'plugins')},
+    workers=32,
+    max_concurrent_transmissions=4,
+    ipv6=False,
     sleep_threshold=30)
 print("Client initialized")
