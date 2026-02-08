@@ -262,6 +262,10 @@ async def ExtraSettings(event: Message, user_id: int):
                         f"Watermark Settings", callback_data="Watermark")],
                     [InlineKeyboardButton(f"Metadata {'☑️' if ((await db.get_metadata_w(user_id)) is True) else ''}", callback_data="triggerMetadata"), InlineKeyboardButton(f"Video {'☑️' if ((await db.get_watermark(user_id)) is True) else ''}", callback_data="triggerVideo")],
                     [InlineKeyboardButton(
+                        f"Bot Settings", callback_data="Watermark")],
+                    [InlineKeyboardButton(f"Interactive Mode {'☑️' if ((await db.get_interactive_mode(user_id)) is True) else ''}", callback_data="triggerInteractive")],
+                    [InlineKeyboardButton("Reset Settings ⚠️", callback_data="resetSettings")],
+                    [InlineKeyboardButton(
                         f"Back", callback_data="OpenSettings")]
                 ]
             )
@@ -270,5 +274,56 @@ async def ExtraSettings(event: Message, user_id: int):
     except FloodWait as e:
         await asyncio.sleep(e.x)
         await ExtraSettings(event, user_id)
+    except MessageNotModified:
+        pass
+
+
+async def InteractiveSession(event: Message, user_id: int):
+    try:
+        r = await db.get_resolution(user_id)
+        if r == 'OG':
+            res = 'Source'
+        elif r == '1080':
+            res = '1080p'
+        elif r == '720':
+            res = '720p'
+        elif r == '576':
+            res = '576p'
+        elif r == '480':
+            res = '480p'
+
+        crf = await db.get_crf(user_id)
+        doc = await db.get_upload_as_doc(user_id)
+        
+        bit = await db.get_bitrate(user_id)
+        if bit == '128':
+            bitrate = '128k'
+        elif bit == 'source':
+            bitrate = 'Source'
+        else:
+            bitrate = f"{bit}k"
+
+        text = f"<b>Interactive Mode</b>\nChoose settings for this video:"
+        markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton(f"Resolution: {res}", callback_data="i_res"),
+                     InlineKeyboardButton(f"CRF: {crf}", callback_data="i_crf")],
+                     
+                    [InlineKeyboardButton(f"As Doc: {'Yes' if doc else 'No'}", callback_data="i_doc"),
+                     InlineKeyboardButton(f"Audio: {bitrate}", callback_data="i_audio")],
+
+                    [InlineKeyboardButton("✅ START ENCODING", callback_data="i_start")],
+                    [InlineKeyboardButton("❌ CANCEL", callback_data="i_cancel")]
+                ]
+            )
+
+        if event.outgoing:
+            await event.edit(text=text, reply_markup=markup)
+        else:
+            await event.reply(text=text, reply_markup=markup, quote=True)
+
+    except FloodWait as e:
+        await asyncio.sleep(e.x)
+        await InteractiveSession(event, user_id)
     except MessageNotModified:
         pass

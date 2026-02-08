@@ -21,7 +21,7 @@
             "hardsub": false,
             "watermark": false,
             "subtitles": true,
-            "resolution": "OG",
+            "resolution": "480",
             "upload_as_doc": false,
             "crf": 28,
             "resize": false

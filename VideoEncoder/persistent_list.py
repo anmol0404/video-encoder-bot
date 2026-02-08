@@ -27,6 +27,10 @@ class PersistentList(list):
         super().clear()
         self.save()
 
+    def __setitem__(self, index, item):
+        super().__setitem__(index, item)
+        self.save()
+
     def save(self):
         queue_data = []
         for message in self:

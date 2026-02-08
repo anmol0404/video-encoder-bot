@@ -46,19 +46,20 @@ class Database:
             frame='source',
             audio='aac',
             sample='source',
-            bitrate='source',
+            bitrate='128',
             bits=False,
             channels='source',
             drive=False,
-            preset='sf',
+            preset='uf',
             metadata=True,
             hardsub=False,
             watermark=False,
             subtitles=True,
-            resolution='OG',
+            resolution='480',
             upload_as_doc=False,
-            crf=22,
-            resize=False
+            crf=28,
+            resize=False,
+            interactive_mode=True
         )
 
     async def add_user(self, id):
@@ -80,6 +81,11 @@ class Database:
         # a list might work if the caller handles it, or we might need an async generator.
         # Most simple implementation: return list of values
         return list(self.data["users"].values())
+
+    async def reset_user(self, id):
+        if str(id) in self.data["users"]:
+            self.data["users"][str(id)] = self.new_user(id)
+            self.save_db()
 
     async def delete_user(self, user_id):
         if str(user_id) in self.data["users"]:
@@ -128,7 +134,7 @@ class Database:
 
     async def get_resolution(self, id):
         user = self.data["users"].get(str(id))
-        return user.get('resolution', 'OG') if user else 'OG'
+        return user.get('resolution', '480') if user else '480'
 
     # Video Bits
     async def set_bits(self, id, bits):
@@ -238,7 +244,7 @@ class Database:
 
     async def get_preset(self, id):
         user = self.data["users"].get(str(id))
-        return user.get('preset', 'sf') if user else 'sf'
+        return user.get('preset', 'uf') if user else 'uf'
 
     # Hard Sub
     async def set_hardsub(self, id, hardsub):
@@ -303,7 +309,7 @@ class Database:
     # CRF
     async def get_crf(self, id):
         user = self.data["users"].get(str(id))
-        return user.get('crf', 18) if user else 18
+        return user.get('crf', 28) if user else 28
 
     async def set_crf(self, id, crf):
         if str(id) in self.data["users"]:
@@ -352,8 +358,16 @@ class Database:
         else:
             return status.get('sudo_')
 
-    async def set_sudo(self, sudo):
-        if 'sudo' not in self.data["status"]:
-            self.data["status"]['sudo'] = {'id': 'sudo'}
         self.data["status"]['sudo']['sudo_'] = sudo
         self.save_db()
+
+    # Interactive Mode
+    async def set_interactive_mode(self, id, interactive_mode):
+        if str(id) in self.data["users"]:
+            self.data["users"][str(id)]['interactive_mode'] = interactive_mode
+            self.save_db()
+
+    async def get_interactive_mode(self, id):
+        user = self.data["users"].get(str(id))
+        return user.get('interactive_mode', True) if user else True
+

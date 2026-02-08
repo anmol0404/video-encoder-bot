@@ -20,6 +20,8 @@ from pyrogram import idle
 from . import app
 from .config import log, LOGGER
 from .state import data
+from .utils.tasks import handle_tasks
+import asyncio
 
 dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
 dns.resolver.default_resolver.nameservers = [
@@ -30,6 +32,26 @@ async def main():
     await app.start()
     LOGGER.info("Loading Queue...")
     await data.load_from_valid_client(app)
+    
+    if len(data) > 0:
+        LOGGER.info("Resuming queued tasks...")
+        message = data[0]
+        if message.text:
+            text = message.text.split(None, 1)
+            if len(text) > 1: # Basic check
+                command = text[0].lower()
+                if 'ddl' in command:
+                    mode = 'url'
+                else:
+                    mode = 'batch'
+            else:
+                 # Fallback if text is weird, likely TG or maybe just command
+                 mode = 'tg'
+        else:
+            mode = 'tg'
+            
+        asyncio.create_task(handle_tasks(message, mode))
+
     await app.send_message(chat_id=log, text=f'<b>Bot Started! @{(await app.get_me()).username}</b>')
     await idle()
     await app.stop()

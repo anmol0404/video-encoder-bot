@@ -13,22 +13,10 @@ requests
 
 # Database
 dnspython
-# motor
 
 # Others
 psutil
-# js2py
-# cfscrape
-# lk21
+
 lxml
 httpx
 
-# Google Drive (Unused)
-# google-api-core
-# google-auth
-# oauth2client<4.0.0
-# google~=3.0.0
-# google-api-python-client
-# google-auth-httplib2
-# google-auth-oauthlib
-# httplib2==0.18.0

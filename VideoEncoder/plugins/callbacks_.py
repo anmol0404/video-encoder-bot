@@ -25,7 +25,8 @@ from ..config import download_dir, log, owner, sudo_users
 from ..plugins.queue import queue_answer
 from ..utils.database.access_db import db
 from ..utils.settings import (AudioSettings, ExtraSettings, OpenSettings,
-                              VideoSettings)
+                              VideoSettings, InteractiveSession)
+from ..utils.tasks import handle_tasks
 from .start import showw_status
 
 
@@ -351,3 +352,72 @@ async def callback_handlers(bot: Client, cb: CallbackQuery):
     # Queue
     elif "queue+" in cb.data:
         await queue_answer(bot, cb)
+
+    # Interactive Mode Callbacks
+    elif "triggerInteractive" in cb.data:
+        if await db.get_interactive_mode(cb.from_user.id):
+            await db.set_interactive_mode(cb.from_user.id, interactive_mode=False)
+        else:
+            await db.set_interactive_mode(cb.from_user.id, interactive_mode=True)
+        await ExtraSettings(cb.message, user_id=cb.from_user.id)
+
+    elif "resetSettings" in cb.data:
+        await db.reset_user(cb.from_user.id)
+        await cb.answer("Settings Reset to Defaults!", show_alert=True)
+        await ExtraSettings(cb.message, user_id=cb.from_user.id)
+
+    elif "i_res" in cb.data:
+        r = await db.get_resolution(cb.from_user.id)
+        if r == 'OG': await db.set_resolution(cb.from_user.id, resolution='1080')
+        elif r == '1080': await db.set_resolution(cb.from_user.id, resolution='720')
+        elif r == '720': await db.set_resolution(cb.from_user.id, resolution='480')
+        elif r == '480': await db.set_resolution(cb.from_user.id, resolution='576')
+        else: await db.set_resolution(cb.from_user.id, resolution='OG')
+        await InteractiveSession(cb.message, user_id=cb.from_user.id)
+
+    elif "i_crf" in cb.data:
+        crf = await db.get_crf(cb.from_user.id)
+        nextcrf = int(crf) + 1
+        if nextcrf > 30: await db.set_crf(cb.from_user.id, crf=18)
+        else: await db.set_crf(cb.from_user.id, crf=nextcrf)
+        await InteractiveSession(cb.message, user_id=cb.from_user.id)
+
+    elif "i_doc" in cb.data:
+        if await db.get_upload_as_doc(cb.from_user.id):
+            await db.set_upload_as_doc(cb.from_user.id, upload_as_doc=False)
+        else:
+            await db.set_upload_as_doc(cb.from_user.id, upload_as_doc=True)
+        await InteractiveSession(cb.message, user_id=cb.from_user.id)
+
+    elif "i_audio" in cb.data:
+        bit = await db.get_bitrate(cb.from_user.id)
+        # Toggle common bitrates: 128 -> 192 -> 320 -> source -> 128
+        if bit == '128': await db.set_bitrate(cb.from_user.id, bitrate='192')
+        elif bit == '192': await db.set_bitrate(cb.from_user.id, bitrate='320')
+        elif bit == '320': await db.set_bitrate(cb.from_user.id, bitrate='source')
+        else: await db.set_bitrate(cb.from_user.id, bitrate='128')
+        await InteractiveSession(cb.message, user_id=cb.from_user.id)
+
+    elif "i_cancel" in cb.data:
+        await cb.message.delete()
+
+    elif "i_start" in cb.data:
+        # Check if list is available (imported from somewhere?)
+        # data is imported in callbacks_? No.
+        # But handle_tasks uses data from state internally? No, handle_tasks uses data from state globally?
+        # handle_tasks imports data. But we need to append to data HERE.
+        # So I need to import data from ..state
+        from ..state import data
+        
+        message = cb.message.reply_to_message
+        if not message:
+            await cb.answer("Original message not found!", show_alert=True)
+            return
+            
+        await cb.message.delete()
+        data.append(message)
+        if len(data) == 1:
+            await handle_tasks(message, 'tg')
+        else:
+            await message.reply("📔 Added to queue!")
+

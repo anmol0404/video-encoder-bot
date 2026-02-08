@@ -135,8 +135,8 @@ async def encode(filepath, message, msg):
     if crf:
         Crf = f'-crf {crf}'
     else:
-        await db.set_crf(message.from_user.id, crf=26)
-        Crf = '-crf 26'
+        await db.set_crf(message.from_user.id, crf=28)
+        Crf = '-crf 28'
 
     # Frame
     fr = await db.get_frame(message.from_user.id)
@@ -221,13 +221,13 @@ async def encode(filepath, message, msg):
     if r == 'OG':
         watermark = ''
     elif r == '1080':
-        watermark = '-vf scale=1920:1080'
+        watermark = '-vf scale=-2:1080'
     elif r == '720':
-        watermark = '-vf scale=1280:720'
+        watermark = '-vf scale=-2:720'
     elif r == '576':
-        watermark = '-vf scale=768:576'
+        watermark = '-vf scale=-2:576'
     else:
-        watermark = '-vf scale=852:480'
+        watermark = '-vf scale=-2:480'
     if w:
         if r == 'OG':
             watermark += '-vf '

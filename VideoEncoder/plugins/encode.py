@@ -21,8 +21,10 @@ from pyrogram import Client, filters
 from ..config import video_mimetype
 from ..state import data
 from ..utils.database.add_user import AddUserToDatabase
+from ..utils.database.access_db import db
 from ..utils.helper import check_chat
 from ..utils.tasks import handle_tasks
+from ..utils.settings import InteractiveSession
 
 
 @Client.on_message(filters.incoming & (filters.video | filters.document))
@@ -34,6 +36,12 @@ async def encode_video(app, message):
     if message.document:
         if not message.document.mime_type in video_mimetype:
             return
+            
+    # Check Interactive Mode
+    if await db.get_interactive_mode(message.from_user.id):
+        await InteractiveSession(message, message.from_user.id)
+        return
+        
     data.append(message)
     if len(data) == 1:
         await handle_tasks(message, 'tg')
