@@ -202,7 +202,10 @@ async def encode(filepath, message, msg):
             if h:
                 subtitles = ''
             else:
-                subtitles = '-c:s copy -c:t copy -map 0:t? -map 0:s?'
+                if ex == 'MP4':
+                    subtitles = '-c:s mov_text -c:t copy -map 0:t? -map 0:s?'
+                else:
+                    subtitles = '-c:s copy -c:t copy -map 0:t? -map 0:s?'
         else:
             subtitles = ''
 
