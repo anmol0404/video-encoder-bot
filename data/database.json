@@ -1,0 +1,40 @@
+{
+    "users": {
+        "6950261247": {
+            "id": 6950261247,
+            "join_date": "2026-02-08",
+            "extensions": "MP4",
+            "hevc": false,
+            "aspect": false,
+            "cabac": false,
+            "reframe": "pass",
+            "tune": true,
+            "frame": "source",
+            "audio": "aac",
+            "sample": "source",
+            "bitrate": "source",
+            "bits": false,
+            "channels": "source",
+            "drive": false,
+            "preset": "uf",
+            "metadata": true,
+            "hardsub": false,
+            "watermark": false,
+            "subtitles": true,
+            "resolution": "OG",
+            "upload_as_doc": false,
+            "crf": 28,
+            "resize": false
+        }
+    },
+    "status": {
+        "sudo": {
+            "id": "sudo",
+            "sudo_": "5217257368"
+        },
+        "auth": {
+            "id": "auth",
+            "chat": "5217257368"
+        }
+    }
+}

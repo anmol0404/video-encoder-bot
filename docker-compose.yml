@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  video-encoder-bot:
+    build: .
+    container_name: video-encoder-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./VideoEncoder/downloads:/app/VideoEncoder/downloads
+      - ./VideoEncoder/encodes:/app/VideoEncoder/encodes
+    restart: unless-stopped
