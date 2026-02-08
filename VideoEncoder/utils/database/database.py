@@ -50,14 +50,14 @@ class Database:
             bits=False,
             channels='source',
             drive=False,
-            preset='uf',
             metadata=True,
             hardsub=False,
             watermark=False,
             subtitles=True,
             resolution='480',
             upload_as_doc=False,
-            crf=28,
+            crf=24,
+            preset='f',
             resize=False,
             interactive_mode=True
         )
@@ -309,7 +309,7 @@ class Database:
     # CRF
     async def get_crf(self, id):
         user = self.data["users"].get(str(id))
-        return user.get('crf', 28) if user else 28
+        return user.get('crf', 24) if user else 24
 
     async def set_crf(self, id, crf):
         if str(id) in self.data["users"]:

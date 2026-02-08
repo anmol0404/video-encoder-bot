@@ -28,10 +28,26 @@ dns.resolver.default_resolver.nameservers = [
     '8.8.8.8']  # this is a google public dns
 
 
+async def daily_cleanup_task():
+    while True:
+        try:
+            # Wait 24 hours
+            await asyncio.sleep(24 * 3600)
+            LOGGER.info("Running Daily Auto-Cleanup...")
+            from .plugins.start import delete_downloads
+            delete_downloads()
+            LOGGER.info("Daily Auto-Cleanup Finished!")
+        except Exception as e:
+            LOGGER.error(f"Error in daily cleanup: {e}")
+            await asyncio.sleep(60)
+
 async def main():
     await app.start()
     LOGGER.info("Loading Queue...")
     await data.load_from_valid_client(app)
+    
+    # Start background tasks
+    asyncio.create_task(daily_cleanup_task())
     
     if len(data) > 0:
         LOGGER.info("Resuming queued tasks...")
@@ -52,7 +68,7 @@ async def main():
             
         asyncio.create_task(handle_tasks(message, mode))
 
-    await app.send_message(chat_id=log, text=f'<b>Bot Started! @{(await app.get_me()).username}</b>')
+    await app.send_message(chat_id=log, text=f'<b>Bot Started! @{(await app.get_me()).username}</b>\nDaily cleanup enabled! 🧹')
     await idle()
     await app.stop()
 

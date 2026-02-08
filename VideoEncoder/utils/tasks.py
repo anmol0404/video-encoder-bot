@@ -28,8 +28,8 @@ from pyrogram.parser import html as pyrogram_html
 from pyrogram.types import Message
 from requests.utils import unquote
 
-from ..config import LOGGER, download_dir, video_mimetype
-from ..state import data
+from ..config import LOGGER, download_dir, video_mimetype, max_workers
+from ..state import data, running_tasks
 from ..plugins.start import delete_downloads
 from .database.access_db import db
 from .direct_link_generator import direct_link_generator
@@ -39,30 +39,64 @@ from .uploads.drive import _get_file_id
 from .uploads.drive.download import Downloader
 
 
-async def on_task_complete():
-    delete_downloads()
-    del data[0]
-    if not len(data) > 0:
-        return
-    message = data[0]
-    if message.text:
-        text = message.text.split(None, 1)
-        command = text.pop(0).lower()
-        if 'ddl' in command:
-            await handle_tasks(message, 'url')
-        else:
-            await handle_tasks(message, 'batch')
-    else:
-        if message.document:
-            if not message.document.mime_type in video_mimetype:
-                await on_task_complete()
-                return
-        await handle_tasks(message, 'tg')
+async def on_task_complete(message):
+    # Isolated cleanup
+    task_dir = os.path.join(download_dir, str(message.id))
+    if os.path.exists(task_dir):
+        import shutil
+        shutil.rmtree(task_dir)
+        
+    # Also clean up encode folder for this message id
+    for file in os.listdir(encode_dir):
+        if file.startswith(str(message.id)):
+            try:
+                os.remove(os.path.join(encode_dir, file))
+            except:
+                pass
+                
+    # Clean up status and process files in download_dir
+    for file in os.listdir(download_dir):
+        if file.startswith(f"status_{message.id}") or file.startswith(f"process_{message.id}"):
+            try:
+                os.remove(os.path.join(download_dir, file))
+            except:
+                pass
 
+    if message in running_tasks:
+        running_tasks.remove(message)
+    await task_dispatcher()
+
+async def task_dispatcher():
+    while len(running_tasks) < max_workers and len(data) > 0:
+        message = data.pop(0)
+        running_tasks.append(message)
+        
+        mode = 'tg'
+        if message.text:
+            text = message.text.split(None, 1)
+            command = text.pop(0).lower()
+            if 'ddl' in command:
+                mode = 'url'
+            else:
+                mode = 'batch'
+        else:
+            if message.document:
+                if not message.document.mime_type in video_mimetype:
+                    running_tasks.remove(message)
+                    continue
+        
+        asyncio.create_task(handle_tasks_internal(message, mode))
 
 async def handle_tasks(message, mode):
+    # This is the entry point from other plugins
+    # We just add to queue and let dispatcher handle it
+    if message not in data and message not in running_tasks:
+        data.append(message)
+    await task_dispatcher()
+
+async def handle_tasks_internal(message, mode):
+    msg = await message.reply_text("<b>💠 Downloading...</b>")
     try:
-        msg = await message.reply_text("<b>💠 Downloading...</b>")
         if mode == 'tg':
             await tg_task(message, msg)
         elif mode == 'url':
@@ -74,13 +108,14 @@ async def handle_tasks(message, mode):
     except IndexError:
         return
     except MessageIdInvalid:
-        await msg.edit('Download Cancelled!')
+        if msg:
+            await msg.edit('Download Cancelled!')
     except FileNotFoundError:
         LOGGER.error('[FileNotFoundError]: Maybe due to cancel, hmm')
     except Exception as e:
         await message.reply(text=f"Error! <code>{e}</code>")
     finally:
-        await on_task_complete()
+        await on_task_complete(message)
 
 
 async def tg_task(message, msg):
@@ -174,7 +209,13 @@ async def handle_download_url(message, msg, batch):
     direct = direct_link_generator(url)
     if direct:
         url = direct
-    path = os.path.join(download_dir, custom_file_name)
+    
+    # Isolate in task-specific folder
+    task_dir = os.path.join(download_dir, str(message.id))
+    if not os.path.exists(task_dir):
+        os.makedirs(task_dir)
+        
+    path = os.path.join(task_dir, custom_file_name)
     filepath = path
     if 'drive.google.com' in url:
         await n.handle_drive(msg, url, custom_file_name, batch)
@@ -185,15 +226,19 @@ async def handle_download_url(message, msg, batch):
 
 async def handle_tg_down(message, msg, mode='no_reply'):
     c_time = time.time()
+    task_dir = os.path.join(download_dir, str(message.id))
+    if not os.path.exists(task_dir):
+        os.makedirs(task_dir)
+        
     if mode == 'no_reply':
         path = await message.download(
-            file_name=download_dir,
+            file_name=task_dir + "/",
             progress=progress_for_pyrogram,
             progress_args=("Downloading...", msg, c_time))
     else:
         if message.reply_to_message:
             path = await message.reply_to_message.download(
-                file_name=download_dir,
+                file_name=task_dir + "/",
                 progress=progress_for_pyrogram,
                 progress_args=("Downloading...", msg, c_time))
         else:

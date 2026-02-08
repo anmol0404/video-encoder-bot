@@ -66,16 +66,16 @@ async def encode(filepath, message, msg):
     name = path.split('/')
 
     if ex == 'MP4':
-        output_filepathh = encode_dir + name[len(name)-1] + '.mp4'
+        output_filepathh = encode_dir + str(msg.id) + "_" + name[len(name)-1] + '.mp4'
     elif ex == 'AVI':
-        output_filepathh = encode_dir + name[len(name)-1] + '.avi'
+        output_filepathh = encode_dir + str(msg.id) + "_" + name[len(name)-1] + '.avi'
     else:
-        output_filepathh = encode_dir + name[len(name)-1] + '.mkv'
+        output_filepathh = encode_dir + str(msg.id) + "_" + name[len(name)-1] + '.mkv'
 
     output_filepath = output_filepathh
     subtitles_path = encode_dir + str(msg.id) + '.ass'
 
-    progress = download_dir + "process.txt"
+    progress = download_dir + f"process_{msg.id}.txt"
     with open(progress, 'w') as f:
         pass
 
@@ -135,8 +135,8 @@ async def encode(filepath, message, msg):
     if crf:
         Crf = f'-crf {crf}'
     else:
-        await db.set_crf(message.from_user.id, crf=28)
-        Crf = '-crf 28'
+        await db.set_crf(message.from_user.id, crf=24)
+        Crf = '-crf 24'
 
     # Frame
     fr = await db.get_frame(message.from_user.id)
@@ -398,7 +398,7 @@ async def handle_progress(proc, msg, message, filepath):
     # Progress Bar
     COMPRESSION_START_TIME = time.time()
     LOGGER.info("ffmpeg_process: "+str(proc.pid))
-    status = download_dir + "status.json"
+    status = download_dir + f"status_{msg.id}.json"
     with open(status, 'w') as f:
         statusMsg = {
             'running': True,
@@ -415,7 +415,7 @@ async def handle_progress(proc, msg, message, filepath):
         json.dump(statusMsg, f, indent=2)
     while proc.returncode == None:
         await asyncio.sleep(5)
-        with open(download_dir + 'process.txt', 'r+') as file:
+        with open(download_dir + f'process_{msg.id}.txt', 'r+') as file:
             text = file.read()
             frame = re.findall("frame=(\d+)", text)
             time_in_us = re.findall("out_time_ms=(\d+)", text)

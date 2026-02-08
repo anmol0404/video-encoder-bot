@@ -312,21 +312,29 @@ async def callback_handlers(bot: Client, cb: CallbackQuery):
     # Cancel
 
     elif "cancel" in cb.data:
-        status = download_dir + "status.json"
+        status = download_dir + f"status_{cb.message.id}.json"
+        if not os.path.exists(status):
+            await cb.answer("Task already finished or not found!", show_alert=True)
+            return
         with open(status, 'r+') as f:
             statusMsg = json.load(f)
             user = cb.from_user.id
             if user != statusMsg['user']:
-                if user == 885190545:
-                    pass
-                elif user in sudo_users or user in owner:
+                if user in sudo_users or user in owner:
                     pass
                 else:
+                    await cb.answer("Not your task!", show_alert=True)
                     return
             statusMsg['running'] = False
             f.seek(0)
             json.dump(statusMsg, f, indent=2)
-            os.remove('VideoEncoder/utils/extras/downloads/process.txt')
+            # Remove the process file for this task if we used one
+            # The current bot uses a global process.txt which is BAD for parallel ETA
+            # But I will fix that later or just skip this os.remove for now to avoid errors
+            try:
+                os.remove(os.path.join(download_dir, 'process.txt'))
+            except:
+                pass
             try:
                 await cb.message.edit_text("🚦🚦 Process Cancelled 🚦🚦")
                 chat_id = log

@@ -23,47 +23,59 @@ from ..config import download_dir
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from ..state import data
+from ..state import data, running_tasks
 from ..utils.database.add_user import AddUserToDatabase
-from ..utils.helper import check_chat
+from ..utils.helper import check_chat, owner, sudo_users
 
 queue_callback_filter = filters.create(
     lambda _, __, query: query.data.startswith('queue+'))
 
 
+async def get_task_at_pos(i):
+    num_running = len(running_tasks)
+    if i < num_running:
+        return running_tasks[i], "Active"
+    else:
+        return data[i - num_running], "Queue"
+
 async def get_title(i):
     try:
-        if data[i].video:
-            return data[i].video.file_name
-        elif data[i].document:
-            return data[i].document.file_name
+        task, status = await get_task_at_pos(i)
+        if task.video:
+            title = task.video.file_name
+        elif task.document:
+            title = task.document.file_name
         else:
-            url = data[i].command[1]
-            return str(unquote_plus(os.path.basename(url)))
+            url = task.text.split(None, 1)[1]
+            title = unquote_plus(os.path.basename(url))
+        return f"[{status}] {title}"
     except:
         return "Unknown Task"
 
 
 def map(pos):
-    size = len(data)
+    num_running = len(running_tasks)
+    total_size = num_running + len(data)
     buttons = []
     
     # Navigation Row
     nav_row = []
     if pos > 0:
         nav_row.append(InlineKeyboardButton("<< Prev", callback_data=f"q_nav+{pos-1}"))
-    nav_row.append(InlineKeyboardButton(f"{pos+1}/{size}", callback_data="q_ignore"))
-    if pos < size - 1:
+    nav_row.append(InlineKeyboardButton(f"{pos+1}/{total_size}", callback_data="q_ignore"))
+    if pos < total_size - 1:
         nav_row.append(InlineKeyboardButton("Next >>", callback_data=f"q_nav+{pos+1}"))
     buttons.append(nav_row)
 
-    # Action Row (Only for non-active tasks i.e., pos > 0)
-    if pos > 0:
+    # Action Row (Only for non-active tasks i.e., pos >= num_running)
+    if pos >= num_running:
         action_row = []
+        # Calculate real pos in 'data'
+        data_pos = pos - num_running
         action_row.append(InlineKeyboardButton("🗑️ Del", callback_data=f"q_del+{pos}"))
-        if pos > 1:
+        if data_pos > 0:
             action_row.append(InlineKeyboardButton("⬆️ Up", callback_data=f"q_up+{pos}"))
-        if pos < size - 1:
+        if data_pos < len(data) - 1:
             action_row.append(InlineKeyboardButton("⬇️ Down", callback_data=f"q_down+{pos}"))
         buttons.append(action_row)
 
@@ -84,9 +96,11 @@ async def queue_answer(app, cb):
 
     # Navigation
     if action == "q_nav":
+        num_running = len(running_tasks)
+        total_size = num_running + len(data)
         tasktitle = await get_title(pos)
         await cb.edit_message_text(
-            f"<b>Task {pos+1}/{len(data)}</b>:\n\n{tasktitle}",
+            f"<b>Task {pos+1}/{total_size}</b>:\n\n{tasktitle}",
             reply_markup=InlineKeyboardMarkup(map(pos))
         )
         return
@@ -108,50 +122,57 @@ async def queue_answer(app, cb):
         await cb.answer("❌ Not your task!", show_alert=True)
         return
 
+    num_running = len(running_tasks)
+    total_size = num_running + len(data)
+
     # Delete
     if action == "q_del":
-        start_time = time.time()
-        task = data.pop(pos)
-        await cb.answer(f"🗑️ Task #{pos+1} Deleted!", show_alert=True)
-        # Refresh current view (stay at pos if valid, else pos-1)
-        new_pos = pos if pos < len(data) else pos - 1
-        if new_pos < 0: new_pos = 0 
+        if pos < num_running:
+            await cb.answer("❌ Cannot delete an Active task!", show_alert=True)
+            return
+            
+        data.pop(pos - num_running)
+        await cb.answer(f"🗑️ Task Deleted!", show_alert=True)
         
-        if len(data) == 0:
+        new_totalSize = num_running + len(data)
+        if new_totalSize == 0:
             await cb.edit_message_text("🥱 No Active Encodes.")
             return
 
+        new_pos = pos if pos < new_totalSize else new_totalSize - 1
+        if new_pos < 0: new_pos = 0 
+        
         tasktitle = await get_title(new_pos)
         await cb.edit_message_text(
-            f"<b>Task {new_pos+1}/{len(data)}</b>:\n\n{tasktitle}",
+            f"<b>Task {new_pos+1}/{new_totalSize}</b>:\n\n{tasktitle}",
             reply_markup=InlineKeyboardMarkup(map(new_pos))
         )
 
     # Move Up
     elif action == "q_up":
-        if pos <= 1: return # Cannot move to 0 (Active)
-        # Swap with pos-1
-        data[pos], data[pos-1] = data[pos-1], data[pos]
-        await cb.answer(f"Moved Up to #{pos}!", show_alert=False)
-        # Follow the item to new position
+        data_pos = pos - num_running
+        if data_pos <= 0: return 
+        # Swap
+        data[data_pos], data[data_pos-1] = data[data_pos-1], data[data_pos]
+        await cb.answer(f"Moved Up!", show_alert=False)
         new_pos = pos - 1
         tasktitle = await get_title(new_pos)
         await cb.edit_message_text(
-            f"<b>Task {new_pos+1}/{len(data)}</b>:\n\n{tasktitle}",
+            f"<b>Task {new_pos+1}/{total_size}</b>:\n\n{tasktitle}",
             reply_markup=InlineKeyboardMarkup(map(new_pos))
         )
 
     # Move Down
     elif action == "q_down":
-        if pos >= len(data) - 1: return
-        # Swap with pos+1
-        data[pos], data[pos+1] = data[pos+1], data[pos]
-        await cb.answer(f"Moved Down to #{pos+2}!", show_alert=False)
-        # Follow the item to new position
+        data_pos = pos - num_running
+        if data_pos >= len(data) - 1: return
+        # Swap
+        data[data_pos], data[data_pos+1] = data[data_pos+1], data[data_pos]
+        await cb.answer(f"Moved Down!", show_alert=False)
         new_pos = pos + 1
         tasktitle = await get_title(new_pos)
         await cb.edit_message_text(
-            f"<b>Task {new_pos+1}/{len(data)}</b>:\n\n{tasktitle}",
+            f"<b>Task {new_pos+1}/{total_size}</b>:\n\n{tasktitle}",
             reply_markup=InlineKeyboardMarkup(map(new_pos))
         )
 
@@ -163,7 +184,10 @@ async def queue_message(app, message):
         return
     await AddUserToDatabase(app, message)
     
-    if len(data) == 0:
+    num_running = len(running_tasks)
+    total_size = num_running + len(data)
+    
+    if total_size == 0:
         await message.reply("🥱 No Active Encodes.")
         return
 
@@ -171,7 +195,7 @@ async def queue_message(app, message):
     pos = 0
     tasktitle = await get_title(pos)
     await message.reply_text(
-        f"<b>Task {pos+1}/{len(data)}</b>:\n\n{tasktitle}",
+        f"<b>Task {pos+1}/{total_size}</b>:\n\n{tasktitle}",
         reply_markup=InlineKeyboardMarkup(map(pos))
     )
 
@@ -202,14 +226,16 @@ async def purge(app, message):
     # Clear Queue
     data.clear()
     
-    # Kill Process
-    try:
-        with open(os.path.join(download_dir, "status.json"), 'r') as f:
-            status = json.load(f)
-            pid = status.get('pid')
-            if pid:
-                os.kill(pid, signal.SIGKILL)
-    except Exception as e:
-        pass
+    # Kill All Processes
+    for file in os.listdir(download_dir):
+        if file.startswith("status_"):
+            try:
+                with open(os.path.join(download_dir, file), 'r') as f:
+                    status = json.load(f)
+                    pid = status.get('pid')
+                    if pid:
+                        os.kill(pid, signal.SIGKILL)
+            except:
+                pass
         
-    await message.reply("♻️ Queue and Active Task PURGED!")
+    await message.reply("♻️ Queue and ALL Active Tasks PURGED!")

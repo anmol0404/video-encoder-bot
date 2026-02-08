@@ -16,14 +16,14 @@
             "bits": false,
             "channels": "source",
             "drive": false,
-            "preset": "uf",
+            "preset": "m",
             "metadata": true,
             "hardsub": false,
             "watermark": false,
             "subtitles": true,
             "resolution": "480",
             "upload_as_doc": false,
-            "crf": 28,
+            "crf": 24,
             "resize": false
         }
     },

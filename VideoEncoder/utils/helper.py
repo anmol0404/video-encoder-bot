@@ -67,7 +67,7 @@ async def check_chat(message, chat):
 
 
 async def handle_url(url, filepath, msg):
-    downloader = SmartDL(url, filepath, progress_bar=False)
+    downloader = SmartDL(url, filepath, progress_bar=False, threads=5)
     downloader.start(blocking=False)
     while not downloader.isFinished():
         await progress_for_url(downloader, msg)

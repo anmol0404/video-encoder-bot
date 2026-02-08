@@ -26,6 +26,7 @@ index = os.environ.get("INDEX_URL")
 
 download_dir = os.environ.get("DOWNLOAD_DIR")
 encode_dir = os.environ.get("ENCODE_DIR")
+max_workers = int(os.environ.get("MAX_WORKERS", 2))
 
 if not download_dir.endswith("/"):
     download_dir += "/"

@@ -5,3 +5,4 @@ VideoEncoder/utils/extras/logs.txt
 encoderbot.session-journal
 .env
 VideoEncoder/downloads/
+VideoEncoder/encodes/
