@@ -43,10 +43,9 @@ async def encode_video(app, message):
         return
         
     data.append(message)
-    if len(data) == 1:
-        await handle_tasks(message, 'tg')
-    else:
-        await message.reply("📔 Waiting for queue...")
+
+    await message.reply("📔 Added to queue!")
+    await handle_tasks(message, 'tg')
     await asyncio.sleep(1)
 
 
@@ -64,7 +63,8 @@ async def url_encode(app, message):
     if len(data) == 1:
         await handle_tasks(message, 'url')
     else:
-        await message.reply("📔 Waiting for queue...")
+        await message.reply("📔 Added to queue!")
+        await handle_tasks(message, 'url')
     await asyncio.sleep(1)
 
 
@@ -82,5 +82,6 @@ async def batch_encode(app, message):
     if len(data) == 1:
         await handle_tasks(message, 'batch')
     else:
-        await message.reply("📔 Waiting for queue...")
+        await message.reply("📔 Added to queue!")
+        await handle_tasks(message, 'batch')
     await asyncio.sleep(1)
