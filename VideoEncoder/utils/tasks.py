@@ -67,7 +67,10 @@ async def on_task_complete(message):
     await task_dispatcher()
 
 async def task_dispatcher():
-    while len(running_tasks) < max_workers and len(data) > 0:
+    while True:
+        if len(running_tasks) >= max_workers or len(data) == 0:
+            break
+
         message = data.pop(0)
         running_tasks.append(message)
         
