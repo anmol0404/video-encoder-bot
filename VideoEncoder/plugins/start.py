@@ -28,6 +28,7 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 
 from ..config import botStartTime, download_dir, encode_dir
+from ..state import data, running_tasks
 from ..utils.database.access_db import db
 from ..utils.database.add_user import AddUserToDatabase
 from ..utils.display_progress import TimeFormatter, humanbytes
@@ -117,6 +118,8 @@ async def show_status(_):
     mem_a = humanbytes(memory.available)
     mem_u = humanbytes(memory.used)
     total_users = await db.total_users_count()
+    active_tasks = len(running_tasks)
+    queued_tasks = len(data)
     text = f"""<b>Uptime of</b>:
 - <b>Bot:</b> {currentTime}
 - <b>OS:</b> {osUptime}
@@ -139,6 +142,9 @@ async def show_status(_):
 - <b>Free:</b> {mem_a}
 - <b>Used:</b> {mem_u}
 
+<b>Tasks:</b>
+- <b>Active:</b> {active_tasks}
+- <b>Queued:</b> {queued_tasks}
 Users: {total_users}"""
     return text
 

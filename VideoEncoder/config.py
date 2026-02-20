@@ -11,6 +11,8 @@ botStartTime = time.time()
 
 if os.path.exists('VideoEncoder/config.env'):
     load_dotenv('VideoEncoder/config.env')
+elif os.path.exists('.env'):
+    load_dotenv('.env')
 
 # Variables
 

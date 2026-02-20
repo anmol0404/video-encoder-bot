@@ -71,6 +71,7 @@ async def handle_url(url, filepath, msg):
     downloader.start(blocking=False)
     while not downloader.isFinished():
         await progress_for_url(downloader, msg)
+        await asyncio.sleep(2)
 
 
 async def handle_encode(filepath, message, msg):

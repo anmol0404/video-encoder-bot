@@ -24,11 +24,13 @@ from ..config import PROGRESS
 async def progress_for_pyrogram(current, total, ud_type, message, start):
     now = time.time()
     diff = now - start
-    if not round(diff % 10.00) or current == total:
+    last_update = getattr(message, "last_updated_at", 0)
+    if now - last_update > 5 or current == total:
+        message.last_updated_at = now
         percentage = current * 100 / total
         speed = current / diff
         elapsed_time = round(diff)
-        time_to_completion = round((total - current) / speed)
+        time_to_completion = round((total - current) / speed) if speed > 0 else 0
         estimated_total_time = elapsed_time + time_to_completion
         elapsed_time = TimeFormatter(seconds=elapsed_time)
         estimated_total_time = TimeFormatter(seconds=estimated_total_time)
@@ -42,32 +44,40 @@ async def progress_for_pyrogram(current, total, ud_type, message, start):
             humanbytes(speed) + "/s",
             estimated_total_time if estimated_total_time != '...' else "Calculating"
         )
-        await message.edit(
-            text="{}\n{}".format(
-                ud_type,
-                tmp
+        try:
+            await message.edit(
+                text="{}\n{}".format(
+                    ud_type,
+                    tmp
+                )
             )
-        )
-        await asyncio.sleep(5)
+        except:
+            pass
 
 
 async def progress_for_url(downloader, msg):
-    total_length = downloader.filesize if downloader.filesize else 0
-    downloaded = downloader.get_dl_size()
-    speed = downloader.get_speed(human=True)
-    estimated_total_time = downloader.get_eta(human=True)
+    now = time.time()
+    last_update = getattr(msg, "last_updated_at", 0)
     percentage = downloader.get_progress() * 100
-    progress = "{0}{1}".format(
-        ''.join(["█" for i in range(math.floor(percentage / 10))]),
-        ''.join(["░" for i in range(10 - math.floor(percentage / 10))])
-    )
-    progress_str = "Downloading\n" + progress + PROGRESS.format(
-        humanbytes(downloaded),
-        humanbytes(total_length),
-        speed,
-        estimated_total_time)
-    await msg.edit_text(progress_str)
-    await asyncio.sleep(5)
+    if now - last_update > 5 or percentage == 100:
+        msg.last_updated_at = now
+        total_length = downloader.filesize if downloader.filesize else 0
+        downloaded = downloader.get_dl_size()
+        speed = downloader.get_speed(human=True)
+        estimated_total_time = downloader.get_eta(human=True)
+        progress = "{0}{1}".format(
+            ''.join(["█" for i in range(math.floor(percentage / 10))]),
+            ''.join(["░" for i in range(10 - math.floor(percentage / 10))])
+        )
+        progress_str = "Downloading\n" + progress + PROGRESS.format(
+            humanbytes(downloaded),
+            humanbytes(total_length),
+            speed,
+            estimated_total_time)
+        try:
+            await msg.edit_text(progress_str)
+        except:
+            pass
 
 
 def humanbytes(size):

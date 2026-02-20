@@ -33,29 +33,36 @@ from .database.access_db import db
 from .display_progress import TimeFormatter
 
 
-def get_codec(filepath, channel='v:0'):
-    output = subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', channel,
-                                      '-show_entries', 'stream=codec_name,codec_tag_string', '-of',
-                                      'default=nokey=1:noprint_wrappers=1', filepath])
-    return output.decode('utf-8').split()
+async def get_codec(filepath, channel='v:0'):
+    proc = await asyncio.create_subprocess_exec(
+        'ffprobe', '-v', 'error', '-select_streams', channel,
+        '-show_entries', 'stream=codec_name,codec_tag_string', '-of',
+        'default=nokey=1:noprint_wrappers=1', filepath,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, _ = await proc.communicate()
+    return stdout.decode('utf-8').split()
 
 
 async def extract_subs(filepath, msg, user_id):
 
     path, extension = os.path.splitext(filepath)
     name = path.split('/')
-    check = get_codec(filepath, channel='s:0')
+    check = await get_codec(filepath, channel='s:0')
     if check == []:
         return None
     elif check == 'pgs':
         return None
     else:
         output = encode_dir + str(msg.id) + '.ass'
-    subprocess.call(['ffmpeg', '-y', '-i', filepath, '-map', 's:0', output])
-    subprocess.call(['mkvextract', 'attachments', filepath, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16',
-                    '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40'])
-    subprocess.run([f"mv -f *.JFPROJ *.FNT *.PFA *.ETX *.WOFF *.FOT *.TTF *.SFD *.VLW *.VFB *.PFB *.OTF *.GXF *.WOFF2 *.ODTTF *.BF *.CHR *.TTC *.BDF *.FON *.GF *.PMT *.AMFM  *.MF *.PFM *.COMPOSITEFONT *.PF2 *.GDR *.ABF *.VNF *.PCF *.SFP *.MXF *.DFONT *.UFO *.PFR *.TFM *.GLIF *.XFN *.AFM *.TTE *.XFT *.ACFM *.EOT *.FFIL *.PK *.SUIT *.NFTR *.EUF *.TXF *.CHA *.LWFN *.T65 *.MCF *.YTF *.F3F *.FEA *.SFT *.PFT /usr/share/fonts/"], shell=True)
-    subprocess.run([f"mv -f *.jfproj *.fnt *.pfa *.etx *.woff *.fot *.ttf *.sfd *.vlw *.vfb *.pfb *.otf *.gxf *.woff2 *.odttf *.bf *.chr *.ttc *.bdf *.fon *.gf *.pmt *.amfm  *.mf *.pfm *.compositefont *.pf2 *.gdr *.abf *.vnf *.pcf *.sfp *.mxf *.dfont *.ufo *.pfr *.tfm *.glif *.xfn *.afm *.tte *.xft *.acfm *.eot *.ffil *.pk *.suit *.nftr *.euf *.txf *.cha *.lwfn *.t65 *.mcf *.ytf *.f3f *.fea *.sft *.pft /usr/share/fonts/ && fc-cache -f"], shell=True)
+    proc1 = await asyncio.create_subprocess_exec('ffmpeg', '-y', '-i', filepath, '-map', 's:0', output)
+    await proc1.communicate()
+    proc2 = await asyncio.create_subprocess_exec('mkvextract', 'attachments', filepath, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16',
+                    '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40')
+    await proc2.communicate()
+    proc3 = await asyncio.create_subprocess_shell("mv -f *.JFPROJ *.FNT *.PFA *.ETX *.WOFF *.FOT *.TTF *.SFD *.VLW *.VFB *.PFB *.OTF *.GXF *.WOFF2 *.ODTTF *.BF *.CHR *.TTC *.BDF *.FON *.GF *.PMT *.AMFM  *.MF *.PFM *.COMPOSITEFONT *.PF2 *.GDR *.ABF *.VNF *.PCF *.SFP *.MXF *.DFONT *.UFO *.PFR *.TFM *.GLIF *.XFN *.AFM *.TTE *.XFT *.ACFM *.EOT *.FFIL *.PK *.SUIT *.NFTR *.EUF *.TXF *.CHA *.LWFN *.T65 *.MCF *.YTF *.F3F *.FEA *.SFT *.PFT /usr/share/fonts/")
+    await proc3.communicate()
+    proc4 = await asyncio.create_subprocess_shell("mv -f *.jfproj *.fnt *.pfa *.etx *.woff *.fot *.ttf *.sfd *.vlw *.vfb *.pfb *.otf *.gxf *.woff2 *.odttf *.bf *.chr *.ttc *.bdf *.fon *.gf *.pmt *.amfm  *.mf *.pfm *.compositefont *.pf2 *.gdr *.abf *.vnf *.pcf *.sfp *.mxf *.dfont *.ufo *.pfr *.tfm *.glif *.xfn *.afm *.tte *.xft *.acfm *.eot *.ffil *.pk *.suit *.nftr *.euf *.txf *.cha *.lwfn *.t65 *.mcf *.ytf *.f3f *.fea *.sft *.pft /usr/share/fonts/ && fc-cache -f")
+    await proc4.communicate()
     return output
 
 
@@ -89,7 +96,7 @@ async def encode(filepath, message, msg):
 
     # HEVC Encode
     x265 = await db.get_hevc(message.from_user.id)
-    video_i = get_codec(filepath, channel='v:0')
+    video_i = await get_codec(filepath, channel='v:0')
     if video_i == []:
         codec = ''
     else:
@@ -194,7 +201,7 @@ async def encode(filepath, message, msg):
     # Copy Subtitles
     h = await db.get_hardsub(message.from_user.id)
     s = await db.get_subtitles(message.from_user.id)
-    subs_i = get_codec(filepath, channel='s:0')
+    subs_i = await get_codec(filepath, channel='s:0')
     if subs_i == []:
         subtitles = ''
     else:
@@ -279,7 +286,7 @@ async def encode(filepath, message, msg):
 
     # Audio
     a = await db.get_audio(message.from_user.id)
-    a_i = get_codec(filepath, channel='a:0')
+    a_i = await get_codec(filepath, channel='a:0')
     if a_i == []:
         audio_opts = ''
     else:
@@ -320,14 +327,14 @@ async def encode(filepath, message, msg):
                    watermark.split() + metadata.split() + subtitles.split() + audio_opts.split() + channels.split() + finish.split()))
     proc = await asyncio.create_subprocess_exec(*command, output_filepath, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     # Progress Bar
-    await handle_progress(proc, msg, message, filepath)
+    progress_task = asyncio.create_task(handle_progress(proc, msg, message, filepath))
     # Wait for the subprocess to finish
     stdout, stderr = await proc.communicate()
+    progress_task.cancel()
     e_response = stderr.decode().strip()
     t_response = stdout.decode().strip()
     LOGGER.info(e_response)
     LOGGER.info(t_response)
-    await proc.communicate()
     return output_filepath
 
 
@@ -364,17 +371,12 @@ def get_width_height(filepath):
 
 
 async def media_info(saved_file_path):
-    process = subprocess.Popen(
-        [
-            'ffmpeg',
-            "-hide_banner",
-            '-i',
-            saved_file_path
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
+    process = await asyncio.create_subprocess_exec(
+        'ffmpeg', "-hide_banner", '-i', saved_file_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT
     )
-    stdout, stderr = process.communicate()
+    stdout, stderr = await process.communicate()
     output = stdout.decode().strip()
     duration = re.search("Duration:\s*(\d*):(\d*):(\d+\.?\d*)[\s\w*$]", output)
     bitrates = re.search("bitrate:\s*(\d+)[\s\w*$]", output)
